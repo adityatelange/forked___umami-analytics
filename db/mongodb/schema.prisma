@@ -1,0 +1,99 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mongodb"
+  url      = env("DATABASE_URL")
+}
+
+model account {
+  id          String    @id @default(auto()) @map("_id") @db.ObjectId
+  username    String    @unique
+  password    String
+  isAdmin     Boolean   @default(false) @map("is_admin")
+  createdAt   DateTime? @default(now()) @map("created_at")
+  updatedAt   DateTime? @default(now()) @map("updated_at")
+  accountUuid String    @unique @map("account_uuid")
+  website     website[]
+}
+
+model event {
+  id        String     @id @default(auto()) @map("_id") @db.ObjectId
+  websiteId String     @map("website_id")
+  sessionId String     @map("session_id")
+  createdAt DateTime?  @default(now()) @map("created_at")
+  url       String
+  eventName String     @map("event_name")
+  eventUuid String     @map("event_uuid")
+  session   session    @relation(fields: [sessionId], references: [id])
+  website   website    @relation(fields: [websiteId], references: [id])
+  eventData eventData?
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([websiteId])
+  @@index([eventUuid])
+}
+
+model eventData {
+  id        String @id @default(auto()) @map("_id") @db.ObjectId
+  eventId   String @unique @map("event_id")
+  eventData Json   @map("event_data")
+  event     event  @relation(fields: [eventId], references: [id])
+
+  @@map("event_data")
+}
+
+model pageview {
+  id        String    @id @default(auto()) @map("_id") @db.ObjectId
+  websiteId String    @map("website_id")
+  sessionId String    @map("session_id")
+  createdAt DateTime? @default(now()) @map("created_at")
+  url       String
+  referrer  String?
+  session   session   @relation(fields: [sessionId], references: [id])
+  website   website   @relation(fields: [websiteId], references: [id])
+
+  @@index([createdAt])
+  @@index([sessionId])
+  @@index([websiteId, createdAt])
+  @@index([websiteId])
+  @@index([websiteId, sessionId, createdAt])
+}
+
+model session {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  sessionUuid String     @unique @map("session_uuid")
+  websiteId   String     @map("website_id")
+  createdAt   DateTime?  @default(now()) @map("created_at")
+  hostname    String?
+  browser     String?
+  os          String?
+  device      String?
+  screen      String?
+  language    String?
+  country     String?
+  website     website?   @relation(fields: [websiteId], references: [id])
+  events      event[]
+  pageview    pageview[]
+
+  @@index([createdAt])
+  @@index([websiteId])
+}
+
+model website {
+  id          String     @id @default(auto()) @map("_id") @db.ObjectId
+  websiteUuid String     @unique @map("website_uuid")
+  userId      String     @map("user_id")
+  name        String
+  domain      String?
+  shareId     String?    @unique @map("share_id")
+  createdAt   DateTime?  @default(now()) @map("created_at")
+  account     account    @relation(fields: [userId], references: [id])
+  event       event[]
+  pageview    pageview[]
+  session     session[]
+
+  @@index([userId])
+}
