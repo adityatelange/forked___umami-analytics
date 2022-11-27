@@ -13,7 +13,7 @@ export default async (req, res) => {
       return unauthorized(res);
     }
 
-    const account = await getAccount({ id: +id });
+    const account = await getAccount({ id: id });
 
     return ok(res, account);
   }
@@ -25,7 +25,7 @@ export default async (req, res) => {
       return unauthorized(res);
     }
 
-    const account = await getAccount({ id: +id });
+    const account = await getAccount({ id: id });
 
     const data = {};
 
@@ -47,7 +47,7 @@ export default async (req, res) => {
       }
     }
 
-    const updated = await updateAccount(data, { id: +id });
+    const updated = await updateAccount(data, { id: id });
 
     return ok(res, updated);
   }
@@ -61,7 +61,7 @@ export default async (req, res) => {
       return unauthorized(res);
     }
 
-    await deleteAccount(+id);
+    await deleteAccount(id);
 
     return ok(res);
   }
