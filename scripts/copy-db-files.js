@@ -10,12 +10,17 @@ function getDatabaseType(url = process.env.DATABASE_URL) {
     return 'postgresql';
   }
 
+  if (type === 'mongodb+srv') {
+    // https://www.mongodb.com/docs/manual/reference/connection-string/#dns-seed-list-connection-format
+    return 'mongodb';
+  }
+
   return type;
 }
 
 const databaseType = getDatabaseType();
 
-if (!databaseType || !['mysql', 'postgresql'].includes(databaseType)) {
+if (!databaseType || !['mysql', 'postgresql', 'mongodb'].includes(databaseType)) {
   throw new Error('Missing or invalid database');
 }
 
