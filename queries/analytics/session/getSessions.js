@@ -1,11 +1,12 @@
 import prisma from 'lib/prisma';
 import clickhouse from 'lib/clickhouse';
-import { runQuery, PRISMA, CLICKHOUSE } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 
 export async function getSessions(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -51,4 +52,23 @@ async function clickhouseQuery(websites, start_at) {
     }
       and created_at >= ${getDateFormat(start_at)}`,
   );
+}
+
+async function mongodbQuery(websites, start_at) {
+  return prisma.client.session.findMany({
+    where: {
+      ...(websites && websites.length > 0
+        ? {
+            website: {
+              websiteUuid: {
+                in: websites,
+              },
+            },
+          }
+        : {}),
+      createdAt: {
+        gte: start_at,
+      },
+    },
+  });
 }

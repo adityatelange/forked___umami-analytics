@@ -1,11 +1,12 @@
 import prisma from 'lib/prisma';
 import clickhouse from 'lib/clickhouse';
-import { runQuery, CLICKHOUSE, PRISMA } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 
 export async function getEventMetrics(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -60,6 +61,35 @@ async function clickhouseQuery(
       ${getFilterQuery('event', filters, params)}
     group by x, t
     order by t`,
+    params,
+  );
+}
+
+async function mongodbQuery(
+  websiteId,
+  start_at,
+  end_at,
+  timezone = 'utc',
+  unit = 'day',
+  filters = {},
+) {
+  // TODO mongo
+  const { rawQuery, getDateQuery, getFilterQuery } = prisma;
+  const params = [start_at, end_at];
+
+  return rawQuery(
+    `select
+      event_name x,
+      ${getDateQuery('event.created_at', unit, timezone)} t,
+      count(*) y
+    from event
+      join website 
+        on event.website_id = website.website_id
+    where website_uuid='${websiteId}'
+      and event.created_at between $1 and $2
+    ${getFilterQuery('event', filters, params)}
+    group by 1, 2
+    order by 2`,
     params,
   );
 }

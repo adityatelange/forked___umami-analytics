@@ -1,5 +1,5 @@
 import clickhouse from 'lib/clickhouse';
-import { CLICKHOUSE, PRISMA, runQuery } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 import prisma from 'lib/prisma';
 import redis from 'lib/redis';
 
@@ -7,6 +7,7 @@ export async function getSessionByUuid(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -50,6 +51,22 @@ async function clickhouseQuery(sessionUuid) {
     .then(async res => {
       if (redis.enabled && res) {
         await redis.set(`session:${res.session_uuid}`, 1);
+      }
+
+      return res;
+    });
+}
+
+async function mongodbQuery(sessionUuid) {
+  return prisma.client.session
+    .findUnique({
+      where: {
+        sessionUuid,
+      },
+    })
+    .then(async res => {
+      if (redis.enabled && res) {
+        await redis.set(`session:${res.sessionUuid}`, 1);
       }
 
       return res;

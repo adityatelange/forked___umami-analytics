@@ -1,5 +1,5 @@
 import { EVENT_NAME_LENGTH, URL_LENGTH } from 'lib/constants';
-import { CLICKHOUSE, PRISMA, runQuery } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 import kafka from 'lib/kafka';
 import prisma from 'lib/prisma';
 
@@ -7,6 +7,7 @@ export async function saveEvent(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -54,4 +55,29 @@ async function clickhouseQuery(
   };
 
   await sendMessage(params, 'event');
+}
+
+async function mongodbQuery(
+  { websiteId },
+  { session: { id: sessionId }, eventUuid, url, eventName, eventData },
+) {
+  const data = {
+    websiteId,
+    sessionId,
+    url: url?.substring(0, URL_LENGTH),
+    eventName: eventName?.substring(0, EVENT_NAME_LENGTH),
+    eventUuid,
+  };
+
+  if (eventData) {
+    data.eventData = {
+      create: {
+        eventData: eventData,
+      },
+    };
+  }
+
+  return prisma.client.event.create({
+    data,
+  });
 }

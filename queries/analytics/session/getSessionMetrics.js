@@ -1,11 +1,12 @@
 import prisma from 'lib/prisma';
 import clickhouse from 'lib/clickhouse';
-import { runQuery, CLICKHOUSE, PRISMA } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 
 export async function getSessionMetrics(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -49,6 +50,32 @@ async function clickhouseQuery(websiteId, { startDate, endDate, field, filters =
       ${sessionQuery}
     group by x
     order by y desc`,
+    params,
+  );
+}
+
+async function mongodbQuery(websiteId, { startDate, endDate, field, filters = {} }) {
+  // TODO mongo
+  const { parseFilters, rawQuery } = prisma;
+  const params = [startDate, endDate];
+  const { pageviewQuery, sessionQuery, joinSession } = parseFilters(null, filters, params);
+
+  return rawQuery(
+    `select ${field} x, count(*) y
+    from session as x
+    where x.session_id in (
+      select pageview.session_id
+      from pageview
+        join website 
+          on pageview.website_id = website.website_id
+        ${joinSession}
+      where website.website_uuid='${websiteId}'
+      and pageview.created_at between $1 and $2
+      ${pageviewQuery}
+      ${sessionQuery}
+    )
+    group by 1
+    order by 2 desc`,
     params,
   );
 }

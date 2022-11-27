@@ -1,11 +1,12 @@
 import prisma from 'lib/prisma';
 import clickhouse from 'lib/clickhouse';
-import { runQuery, CLICKHOUSE, PRISMA } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 
 export async function getPageviewStats(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -70,6 +71,44 @@ async function clickhouseQuery(
         ${sessionQuery}
       group by t) g
     order by t`,
+    params,
+  );
+}
+
+async function mongodbQuery(
+  websiteId,
+  {
+    start_at,
+    end_at,
+    timezone = 'utc',
+    unit = 'day',
+    count = '*',
+    filters = {},
+    sessionKey = 'session_id',
+  },
+) {
+  // TODO mongo
+  const { getDateQuery, parseFilters, rawQuery } = prisma;
+  const params = [start_at, end_at];
+  const { pageviewQuery, sessionQuery, joinSession } = parseFilters(
+    'pageview',
+    null,
+    filters,
+    params,
+  );
+
+  return rawQuery(
+    `select ${getDateQuery('pageview.created_at', unit, timezone)} t,
+        count(${count !== '*' ? `${count}${sessionKey}` : count}) y
+      from pageview
+        join website
+            on pageview.website_id = website.website_id
+        ${joinSession}
+      where website.website_uuid='${websiteId}'
+        and pageview.created_at between $1 and $2
+        ${pageviewQuery}
+        ${sessionQuery}
+      group by 1`,
     params,
   );
 }

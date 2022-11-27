@@ -1,5 +1,5 @@
 import { URL_LENGTH } from 'lib/constants';
-import { CLICKHOUSE, PRISMA, runQuery } from 'lib/db';
+import { CLICKHOUSE, PRISMA, MONGODB, runQuery } from 'lib/db';
 import kafka from 'lib/kafka';
 import prisma from 'lib/prisma';
 
@@ -7,6 +7,7 @@ export async function savePageView(...args) {
   return runQuery({
     [PRISMA]: () => relationalQuery(...args),
     [CLICKHOUSE]: () => clickhouseQuery(...args),
+    [MONGODB]: () => mongodbQuery(...args),
   });
 }
 
@@ -37,4 +38,15 @@ async function clickhouseQuery(
   };
 
   await sendMessage(params, 'event');
+}
+
+async function mongodbQuery({ websiteId }, { session: { id: sessionId }, url, referrer }) {
+  return prisma.client.pageview.create({
+    data: {
+      websiteId,
+      sessionId,
+      url: url?.substring(0, URL_LENGTH),
+      referrer: referrer?.substring(0, URL_LENGTH),
+    },
+  });
 }
