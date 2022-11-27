@@ -39,18 +39,23 @@ async function clickhouseQuery(websiteId) {
   );
 }
 
-async function mongodbQuery(websiteId) {
-  // TODO mongo
+async function mongodbQuery(websiteUuid) {
   const date = subMinutes(new Date(), 5);
-  const params = [date];
 
-  return prisma.rawQuery(
-    `select count(distinct session_id) x
-    from pageview
-      join website 
-        on pageview.website_id = website.website_id
-    where website.website_uuid = '${websiteId}'
-    and pageview.created_at >= $1`,
-    params,
-  );
+  return [
+    {
+      x: await prisma.client.pageview.count({
+        where: {
+          websiteId: await prisma.client.website.findUnique({
+            where: {
+              websiteUuid: websiteUuid,
+            },
+          }).id,
+          createdAt: {
+            gte: date,
+          },
+        },
+      }),
+    },
+  ];
 }
