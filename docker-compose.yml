@@ -2,25 +2,30 @@
 version: '3'
 services:
   umami:
-    image: ghcr.io/umami-software/umami:postgresql-latest
+    image: umami_mongo:latest
     ports:
       - "3000:3000"
     environment:
-      DATABASE_URL: postgresql://umami:umami@db:5432/umami
-      DATABASE_TYPE: postgresql
+      DATABASE_URL: mongodb://umami:umami@db:27017/umami
+      DATABASE_TYPE: mongodb
       HASH_SALT: replace-me-with-a-random-string
     depends_on:
       - db
     restart: always
   db:
-    image: postgres:12-alpine
+    image: bitnami/mongodb:latest # https://github.com/prisma/prisma/issues/8266
     environment:
-      POSTGRES_DB: umami
-      POSTGRES_USER: umami
-      POSTGRES_PASSWORD: umami
+      MONGODB_ROOT_PASSWORD: umami
+      MONGODB_USERNAME: umami
+      MONGODB_PASSWORD: umami
+      MONGODB_DATABASE: umami
+      MONGODB_REPLICA_SET_KEY: replicasetkey123
+      MONGODB_ADVERTISED_HOSTNAME: 127.0.0.1
+      MONGODB_REPLICA_SET_MODE: primary
+      MONGODB_REPLICA_SET_NAME: rs0
     volumes:
-      - ./sql/schema.postgresql.sql:/docker-entrypoint-initdb.d/schema.postgresql.sql:ro
-      - umami-db-data:/var/lib/postgresql/data
+      - ./db/mongodb/mongo-init.js:/docker-entrypoint-initdb.d/mongo-init.js:ro
+      - umami-db-data:/data/db
     restart: always
 volumes:
   umami-db-data:
